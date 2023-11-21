@@ -1,0 +1,53 @@
+#!/usr/bin/bash
+
+
+threads=$1
+extension=$2
+path=$3
+dirKrakenDB="/data/dvaldivia_data/krakenDB_PlusPFP_20230314"
+
+mkdir results
+mkdir results/kraken/
+
+for file in $path/*$extension;
+    do
+	#echo $file
+    base=$(basename ${file} $extension)
+    #echo $base
+	folder="${base%_*.*_*_*_*_*}"
+    #echo $folder
+	echo "taxonomic assignment sample $base"
+
+
+	wdir=results/kraken/${folder}
+		
+	if [ -d "$wdir" ]; then 
+		echo IMPORTANT:
+		echo There is a previous run for sample: ${folder}
+		echo The directory ${wdir} will be deleted 
+		rm -r $wdir
+	fi
+	mkdir $wdir
+	echo New directory ${wdir} created for sample ${folder}
+
+	kraken2 --db $dirKrakenDB \
+		--threads $threads \
+		--output ${wdir}/${folder}.kraken.out \
+		--report ${wdir}/${folder}.kraken.report \
+		$path/${folder}*.$extension
+
+	echo $folder 'taxonomy assignment Done'
+	done
+	echo "---------------------- METAPIPELINE ---------------------------------------"
+	echo "                       PARSING KRAKEN'S OUTPUT                                     "
+	echo "-----------------------------------------------------------------------------------"
+# Create json file for R analysis ------------------------------------
+#	 kraken-biom parses the .report files.
+# 	 The option --min P can be used to keep assignments that have 
+#	 at least phylum taxa, but this can also be filtered during
+#	 the R analysis
+
+kraken-biom results/kraken/*/*.report \
+	-o results/taxonomy_kraken.json \
+	--fmt json  
+echo 'Kraken-biom file created'
